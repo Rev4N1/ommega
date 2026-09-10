@@ -1,0 +1,10 @@
+Ommega Client-B
+===============
+
+This directory is the primary Client-B implementation, handling device-side coordination, callback reporting and auxiliary verification.
+
+Current conventions:
+  - package / applicationId: org.ommega.deviceb
+  - MainActivity, RelayService, KeystoreHelper, CustomKeyboxAttest, ServerClient are authoritative in this directory
+
+Signing: if `../debug.keystore` exists, the release build can bind to that keystore.

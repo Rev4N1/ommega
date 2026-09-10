@@ -48,7 +48,7 @@ jobs:
       - name: Test version synchronization
         run: python3 .github/scripts/test_bump_version.py
       - name: Test B WebUI configuration handling
-        run: node --test b-side/source/scripts/webui.test.mjs
+        run: node --test b-side/scripts/webui.test.mjs
 
   android:
     name: Android ${{ matrix.component }}
@@ -75,29 +75,29 @@ jobs:
           components: rustfmt,clippy
       - uses: ./.github/actions/android-toolchain
         with:
-          workspace: ${{ matrix.component }}-side/source
+          workspace: ${{ matrix.component }}-side
       - name: Cache Android Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: ${{ matrix.component }}-side/source
+          workspaces: ${{ matrix.component }}-side
           key: android-${{ matrix.component }}-ndk28c-api26
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - name: Check Android workspace
-        working-directory: ${{ matrix.component }}-side/source
+        working-directory: ${{ matrix.component }}-side
         run: |
           # build.rs generates src/proto.rs on a clean checkout before rustfmt traverses it.
           cargo clippy --locked --target aarch64-linux-android --workspace --all-targets -- -D warnings
           cargo fmt --all -- --check
           cargo test --locked --target aarch64-linux-android --workspace --no-run
       - name: Build Android module
-        working-directory: ${{ matrix.component }}-side/source
+        working-directory: ${{ matrix.component }}-side
         run: |
           unset CARGO_TARGET_DIR
           python3 build.py --release --abi arm64-v8a
       - name: Verify B-side Android ELF linkage
         if: matrix.component == 'b'
-        working-directory: b-side/source
+        working-directory: b-side
         run: |
           relay=target/aarch64-linux-android/release/relay
           readelf="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
@@ -119,54 +119,76 @@ jobs:
           name: ommega-${{ needs.prepare.outputs.version }}-${{ matrix.component }}
           if-no-files-found: error
           compression-level: 0
-          path: ${{ matrix.component }}-side/source/target/*-release-arm64-v8a-*.zip
+          path: ${{ matrix.component }}-side/target/*-release-arm64-v8a-*.zip
 
   server:
-    name: Server Linux
+    name: Server ${{ matrix.name }}
     needs: prepare
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            artifact: relay_rs-linux-x86_64-musl
+          - name: linux-arm64
+            os: ubuntu-24.04
+            target: aarch64-unknown-linux-musl
+            artifact: relay_rs-linux-arm64-musl
+          - name: windows-x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+            artifact: relay_rs-windows-x86_64-msvc.exe
     steps:
       - uses: actions/checkout@v4
       - name: Set build version
+        shell: bash
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 .github/scripts/bump_version.py --version "$RELEASE_VERSION"
-      - name: Install musl
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends musl-tools
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUSTUP_TOOLCHAIN }}
-          targets: x86_64-unknown-linux-musl
+          targets: ${{ matrix.target }}
           components: rustfmt,clippy
+      - name: Set up cross toolchain
+        if: runner.os == 'Linux'
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: server/source
-          key: server-linux-musl
+          workspaces: server
+          key: server-${{ matrix.name }}
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - name: Check and test Server
-        working-directory: server/source
+        if: matrix.name == 'linux-x86_64'
+        working-directory: server
         run: |
           cargo clippy --locked --workspace --all-targets --no-deps
           cargo test --locked --workspace
       - name: Build Server
-        working-directory: server/source
-        env:
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+        working-directory: server
+        shell: bash
         run: |
-          cargo build --locked --release --target x86_64-unknown-linux-musl --bin relay_rs
+          cargo build --locked --release --target ${{ matrix.target }} --bin relay_rs
           mkdir -p dist
-          cp target/x86_64-unknown-linux-musl/release/relay_rs dist/relay_rs-linux-x86_64-musl
-          chmod +x dist/relay_rs-linux-x86_64-musl
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/relay_rs.exe" "dist/${{ matrix.artifact }}"
+          else
+            cp "target/${{ matrix.target }}/release/relay_rs" "dist/${{ matrix.artifact }}"
+            chmod +x "dist/${{ matrix.artifact }}"
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: ommega-${{ needs.prepare.outputs.version }}-server
+          name: ommega-${{ needs.prepare.outputs.version }}-server-${{ matrix.name }}
           if-no-files-found: error
           compression-level: 0
-          path: server/source/dist/relay_rs-linux-x86_64-musl
+          path: server/dist/${{ matrix.artifact }}
 
   apks:
     name: Android APKs
@@ -200,9 +222,9 @@ jobs:
               -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
               -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
-          cp "$HOME/.android/debug.keystore" b-app/source/debug.keystore
+          cp "$HOME/.android/debug.keystore" b-app/debug.keystore
       - name: Test and build B-app
-        working-directory: b-app/source
+        working-directory: b-app
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:assembleRelease --build-cache --parallel --no-daemon
@@ -217,7 +239,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           mkdir -p dist
-          cp b-app/source/app/build/outputs/apk/release/app-release.apk "dist/Ommega-B-app-${RELEASE_VERSION}-debug-signed.apk"
+          cp b-app/app/build/outputs/apk/release/app-release.apk "dist/Ommega-B-app-${RELEASE_VERSION}-debug-signed.apk"
           cp StrongBoxCapabilityMask/app/build/outputs/apk/release/app-release.apk "dist/StrongBoxCapabilityMask-${RELEASE_VERSION}-debug-signed.apk"
           expected_digest=
           for apk in dist/*.apk; do
@@ -259,8 +281,9 @@ jobs:
           from pathlib import Path
           root = Path('dist')
           files = sorted(p for p in root.iterdir() if p.is_file())
-          if len(files) != 5 or sum(p.suffix == '.zip' for p in files) != 2 or sum(p.suffix == '.apk' for p in files) != 2:
-              raise SystemExit('Expected two module ZIPs, two APKs and one server binary')
+          servers = [p for p in files if p.suffix not in ('.zip', '.apk')]
+          if len(files) != 7 or sum(p.suffix == '.zip' for p in files) != 2 or sum(p.suffix == '.apk' for p in files) != 2 or len(servers) != 3:
+              raise SystemExit('Expected two module ZIPs, two APKs and three server binaries')
           (root / 'build-info.json').write_text(json.dumps({'version': os.environ['RELEASE_VERSION'], 'commit': os.environ['SOURCE_COMMIT'], 'apk_signing': 'Android debug'}, indent=2) + '\n')
           files.append(root / 'build-info.json')
           (root / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in files))

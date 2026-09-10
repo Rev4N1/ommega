@@ -1,4 +1,4 @@
-# ===== 重复打包副本 / 内部知识库 =====
+# ===== Duplicate packaging copies / internal knowledge base =====
 ommega-三端全量-20260822-v3/
 .qoder/
 /artifacts/
@@ -8,13 +8,13 @@ ommega-三端全量-20260822-v3/
 /.tmp*/
 **/.webui-test-*/
 
-# ===== 根目录本地运维脚本 =====
+# ===== Root-level local ops scripts =====
 /pull_b_log.sh
 /tail_server_logs.py
 /simulate_a_side.py
 /deploy_remote.py
 
-# ===== 构建缓存 / 中间产物 =====
+# ===== Build cache / intermediate artifacts =====
 **/target/
 **/.gradle/
 **/.kotlin/
@@ -24,13 +24,13 @@ ommega-三端全量-20260822-v3/
 **/__pycache__/
 **/*.pyc
 
-# ===== 本地环境配置（含本地路径/签名私钥）=====
+# ===== Local environment config (contains local paths / signing keys) =====
 **/.cargo/
 **/local.properties
 **/debug.keystore
 **/.idea/
 
-# ===== 密钥 / 证书 / 日志 / 数据库 =====
+# ===== Keys / certificates / logs / databases =====
 **/.env
 **/*.log
 **/*.der
@@ -38,24 +38,24 @@ ommega-三端全量-20260822-v3/
 **/*.db
 **/*.xdb
 **/*.key
-server/source/cert.json
-server/source/data/
-server/source/chain_*.txt
+server/cert.json
+server/data/
+server/chain_*.txt
 
-# ===== server 调试 / 诊断 / 运维遗留（不随源码公开）=====
-server/source/*.py
-server/source/*.ps1
-server/source/zig-musl-*
-server/source/zig-tools/
-server/source/run_apis*.ps1
-server/source/start_*.ps1
-server/source/test_*.ps1
-server/source/smoke_*.ps1
+# ===== server debug / diagnostics / ops leftovers (not published with source) =====
+server/*.py
+server/*.ps1
+server/zig-musl-*
+server/zig-tools/
+server/run_apis*.ps1
+server/start_*.ps1
+server/test_*.ps1
+server/smoke_*.ps1
 
-# ===== b-side 本地调试脚本（含本机 adb 路径）=====
-b-side/source/check_logs.py
-b-side/source/clean_instances.py
-b-side/source/diag*.py
-b-side/source/fix_pid.py
-b-side/source/restart_relay_for_logs.py
-b-side/source/watch_relay.py
+# ===== b-side local debug scripts (contain local adb paths) =====
+b-side/check_logs.py
+b-side/clean_instances.py
+b-side/diag*.py
+b-side/fix_pid.py
+b-side/restart_relay_for_logs.py
+b-side/watch_relay.py

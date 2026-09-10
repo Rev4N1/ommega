@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay Service Console</title>
+<style>
+:root {
+  --bg: #0f1420;
+  --panel: #171e2e;
+  --panel2: #1d2538;
+  --border: #2a3450;
+  --text: #e6ebf5;
+  --muted: #8b96b0;
+  --accent: #4f7cff;
+  --accent2: #6a5cff;
+  --green: #2ecc71;
+  --amber: #f0a832;
+  --red: #e74c5e;
+  --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(106,92,255,.12), transparent),
+    radial-gradient(900px 500px at -10% 10%, rgba(79,124,255,.10), transparent),
+    linear-gradient(rgba(14,17,23,.82), rgba(14,17,23,.82)),
+    url('/static/bg.png') center top / cover no-repeat fixed;
+  background-attachment: fixed, fixed, fixed, fixed;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 24px;
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo .dot {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: grid; place-items: center; font-weight: 800; font-size: 18px;
+  box-shadow: 0 4px 20px rgba(79,124,255,.4);
+}
+.logo h1 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+.logo small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; margin-top: 2px; }
+.actions { display: flex; align-items: center; gap: 14px; }
+.badge {
+  padding: 6px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+.badge.ok { color: var(--green); border-color: rgba(46,204,113,.4); }
+.badge.off { color: var(--muted); }
+
+/* Mode switch */
+.switch { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); }
+.switch input { display: none; }
+.switch .track {
+  width: 46px; height: 26px; border-radius: 999px; background: var(--panel2);
+  border: 1px solid var(--border); position: relative; cursor: pointer; transition: .25s;
+}
+.switch .track::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--muted); transition: .25s;
+}
+.switch input:checked + .track { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: transparent; }
+.switch input:checked + .track::after { left: 23px; background: #fff; }
+.switch .mode-label { font-weight: 600; color: var(--text); min-width: 130px; }
+
+/* Cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card {
+  background: linear-gradient(180deg, var(--panel), var(--panel2));
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
+  transition: transform .15s, border-color .15s;
+}
+.card:hover { transform: translateY(-2px); border-color: rgba(79,124,255,.5); }
+.card .label { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .6px; }
+.card .value { font-size: 26px; font-weight: 800; }
+.card .sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.card .value.green { color: var(--green); }
+.card .value.amber { color: var(--amber); }
+.card .value.red { color: var(--red); }
+.card .value.accent { color: var(--accent); }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 24px; overflow: hidden;
+}
+.panel h2 {
+  font-size: 15px; font-weight: 700; padding: 16px 20px;
+  border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+}
+.panel h2 .hint { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
+.panel .body { padding: 20px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th {
+  text-align: left; padding: 12px 16px; color: var(--muted); font-weight: 600;
+  font-size: 12px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.02);
+}
+td { padding: 12px 16px; border-bottom: 1px solid rgba(42,52,80,.5); vertical-align: middle; }
+tr:hover td { background: rgba(79,124,255,.05); }
+.mono { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+}
+.tag.ec { background: rgba(79,124,255,.15); color: var(--accent); }
+.tag.rsa { background: rgba(240,168,50,.15); color: var(--amber); }
+.tag.on { background: rgba(46,204,113,.15); color: var(--green); }
+.tag.off { background: rgba(231,76,94,.15); color: var(--red); }
+.tag.warn { background: rgba(240,168,50,.15); color: var(--amber); }
+
+.btn {
+  padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12.5px;
+  transition: .15s; font-weight: 600;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.danger:hover { border-color: var(--red); color: var(--red); }
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none; color: #fff; box-shadow: 0 4px 16px rgba(79,124,255,.35);
+}
+.btn.primary:hover { filter: brightness(1.1); color: #fff; }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+
+/* Upload area */
+.dropzone {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 34px 20px; text-align: center; cursor: pointer; transition: .2s; background: rgba(255,255,255,.015);
+}
+.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(79,124,255,.06); }
+.dropzone .big { font-size: 34px; margin-bottom: 8px; }
+.dropzone p { color: var(--muted); font-size: 14px; }
+.dropzone p strong { color: var(--text); }
+.dropzone .sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.upload-status { margin-top: 14px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; display: none; }
+.upload-status.ok { display: block; background: rgba(46,204,113,.1); border: 1px solid rgba(46,204,113,.35); color: var(--green); }
+.upload-status.err { display: block; background: rgba(231,76,94,.1); border: 1px solid rgba(231,76,94,.35); color: var(--red); }
+
+/* Token bar */
+.token-bar {
+  display: flex; gap: 10px; align-items: center; margin-bottom: 20px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 16px;
+}
+.token-bar input {
+  flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 9px 12px; font-size: 13px; outline: none; font-family: "Cascadia Code", monospace;
+}
+.token-bar input:focus { border-color: var(--accent); }
+.token-bar .hint { color: var(--muted); font-size: 12px; max-width: 460px; line-height: 1.5; }
+
+.empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13.5px; }
+.spinner {
+  display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -3px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast {
+  position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 10px;
+  background: var(--panel2); border: 1px solid var(--border); font-size: 13.5px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4); opacity: 0; transform: translateY(10px);
+  transition: .25s; z-index: 999; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.ok { border-color: rgba(46,204,113,.5); }
+.toast.err { border-color: rgba(231,76,94,.5); }
+section { margin-bottom: 24px; }
+h3.sec-title { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; }
+.tip {
+  background: rgba(79,124,255,.08); border: 1px solid rgba(79,124,255,.25);
+  border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: var(--muted);
+  line-height: 1.6; margin-bottom: 14px;
+}
+.tip b { color: var(--text); }
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  display: none; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-mask.show { display: flex; }
+.modal {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  width: min(680px, 92vw); max-height: 80vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5); overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  font-size: 15px; font-weight: 600; color: var(--text);
+}
+.modal-close {
+  background: none; border: none; color: var(--muted); font-size: 22px;
+  cursor: pointer; line-height: 1; padding: 0 4px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 16px 20px; overflow-y: auto; }
+.modal-body table { width: 100%; }
+
+/* Collapsible table */
+.collapse-bar {
+  text-align: center; padding: 10px 16px; border-top: 1px solid var(--border);
+  cursor: pointer; background: rgba(255,255,255,.015); font-size: 13px; color: var(--muted);
+  transition: .15s;
+}
+.collapse-bar:hover { color: var(--accent); background: rgba(79,124,255,.05); }
+
+/* Search bar */
+.search-bar {
+  display: flex; gap: 8px; align-items: center; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); background: rgba(255,255,255,.015);
+}
+.search-bar input {
+  flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 7px 12px; font-size: 13px; outline: none;
+}
+.search-bar input:focus { border-color: var(--accent); }
+.search-bar .count { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* Responsive table wrapper: horizontal scroll on narrow screens */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrap .mono { word-break: break-all; white-space: normal; }
+
+@media (max-width: 640px) {
+  body { padding: 12px; }
+  .logo h1 { font-size: 17px; }
+  .logo small { font-size: 11px; }
+  .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { padding: 14px 14px; }
+  .card .value { font-size: 22px; }
+  .panel h2 { font-size: 13px; padding: 12px 14px; }
+  .panel h2 .hint { display: none; }
+  .panel .body { padding: 14px; }
+  th, td { font-size: 12px; padding: 8px 10px; white-space: nowrap; }
+  .token-bar { flex-direction: column; align-items: stretch; text-align: center; }
+  .token-bar .hint { max-width: 100%; }
+  .token-gen { flex-direction: column; }
+  .token-gen select, .token-gen input { width: 100% !important; min-width: 0 !important; }
+  .actions { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .switch .mode-label { min-width: 0; font-size: 11px; }
+  .badge { font-size: 11px; padding: 4px 10px; }
+  .dropzone { padding: 20px 14px; }
+  .dropzone .big { font-size: 26px; }
+  .modal { width: 96vw; }
+  .modal-head { font-size: 14px; padding: 12px 14px; }
+  .modal-body { padding: 12px 14px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="dot">R</div>
+    <div>
+      <h1>Relay Service Console</h1>
+      <small>ommega relay server — admin</small>
+    </div>
+  </div>
+  <div class="actions">
+    <span class="badge" id="serverBadge">Connecting…</span>
+    <span class="badge" id="userBadge"></span>
+    <button class="btn small" id="logoutBtn" onclick="logout()" style="display:none;">Log out</button>
+    <div class="switch">
+      <span>Mode switch</span>
+      <input type="checkbox" id="modeSwitch">
+      <label for="modeSwitch" class="track"></label>
+      <span class="mode-label" id="modeLabel">…</span>
+    </div>
+  </div>
+</header>
+
+<div class="token-bar" id="sessionBar" style="display:none;">
+  <span class="hint">Signed in: <b id="sessionUser"></b> · This console uses a separate admin session (isolated from A/B-side tokens)</span>
+</div>
+
+<!-- Operation guide -->
+<div class="panel">
+  <h2>Instructions</h2>
+  <div class="body">
+    <div class="tip">
+      <b>1. Upload a certificate</b>: drag keybox.xml onto the upload area below (just this one file; the private key and certificate chain are parsed automatically).<br>
+      <b>2. Enable local issuing</b>: with the top-right switch on, the server signs certificates directly with its own keybox (server_keybox mode); with it off, requests are forwarded to the real TEE via the A/B side (physical mode).<br>
+      <b>3. Manage Tokens</b>: use the "API Token management" section below to generate A/B-side access tokens.<br>
+      <b>4. View results</b>: the tables below show stored identities, online B-side devices, tasks, and reports in real time.
+    </div>
+  </div>
+</div>
+
+<!-- Stat cards -->
+<div class="grid" id="statCards">
+  <div class="card"><div class="label">Current mode</div><div class="value accent" id="statMode">—</div><div class="sub" id="statModeSub">—</div></div>
+  <div class="card"><div class="label">Stored device identities</div><div class="value accent" id="statIdents">—</div><div class="sub" id="statActiveIdent">—</div></div>
+  <div class="card"><div class="label">Online B-side</div><div class="value green" id="statBDev">—</div><div class="sub">reported via b/poll long-poll</div></div>
+  <div class="card"><div class="label">Tasks</div><div class="value amber" id="statPending">—</div><div class="sub">Done: <span id="statDone">—</span> · Failed: <span id="statFail">—</span></div></div>
+</div>
+
+<!-- Keybox upload -->
+<div class="panel">
+  <h2>Upload keybox.xml <span class="hint">Just this one file; the private key and certificate chain are parsed automatically</span></h2>
+  <div class="body">
+    <div class="dropzone" id="dropzone">
+      <div class="big">📄</div>
+      <p>Click to choose a file, or drag <strong>keybox.xml</strong> here</p>
+      <p class="sub">After a successful upload it is saved as a device identity and local issuing mode is enabled automatically</p>
+      <input type="file" id="fileInput" accept=".xml,text/xml" hidden>
+    </div>
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+</div>
+
+<!-- Devices -->
+<div class="panel">
+  <h2>Device identities (Keybox certificates) <span class="hint" id="identHint">Issuable identities stored on the server</span></h2>
+  <div class="search-bar">
+    <input type="text" id="identSearch" placeholder="Search device ID…" oninput="filterIdents()">
+    <span class="count" id="identCount"></span>
+  </div>
+  <div class="body" style="padding:0">
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Device ID</th><th>Algorithm</th><th>Certs</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="identBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+    </div>
+    <div class="collapse-bar" id="identCollapse" style="display:none" onclick="toggleCollapse('ident')">Show all</div>
+  </div>
+</div>
+
+<!-- Connected B devices -->
+<div class="panel">
+  <h2>Online B-side devices <span class="hint">Forwarding endpoints currently connected to this server (by load, ascending)</span></h2>
+  <div class="body" style="padding:0">
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Device ID</th><th>Machine ID</th><th>Load</th><th>Last online</th></tr></thead>
+      <tbody id="bdevBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+    </table>
+    </div>
+    <div class="collapse-bar" id="bdevCollapse" style="display:none" onclick="toggleCollapse('bdev')">Show all</div>
+  </div>
+</div>
+
+<!-- Tasks -->
+<div class="panel">
+  <h2>Recent tasks <span class="hint">Latest 100</span></h2>
+  <div class="search-bar">
+    <input type="text" id="taskSearch" placeholder="Search task ID, type, device…" oninput="filterTasks()">
+    <span class="count" id="taskCount"></span>
+  </div>
+  <div class="body" style="padding:0">
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Task ID</th><th>Task type</th><th>Target device</th><th>Status</th><th>Created</th></tr></thead>
+      <tbody id="taskBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+    </div>
+    <div class="collapse-bar" id="taskCollapse" style="display:none" onclick="toggleCollapse('task')">Show all</div>
+  </div>
+</div>
+
+<!-- Reports -->
+<div class="panel">
+  <h2>Client reports <span class="hint">Runtime info reported by the A/B side</span></h2>
+  <div class="search-bar">
+    <input type="text" id="reportSearch" placeholder="Search device, message…" oninput="filterReports()">
+    <span class="count" id="reportCount"></span>
+  </div>
+  <div class="body" style="padding:0">
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Device</th><th>Level</th><th>Message</th><th>Time</th></tr></thead>
+      <tbody id="reportBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+    </table>
+    </div>
+    <div class="collapse-bar" id="reportCollapse" style="display:none" onclick="toggleCollapse('report')">Show all</div>
+  </div>
+</div>
+
+<!-- API Tokens -->
+<div class="panel">
+  <h2>API Token management <span class="hint">Card-style tokens: the timer starts on first use</span></h2>
+  <div class="body">
+    <div class="token-gen" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
+      <select id="tokRole" style="background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;">
+        <option value="a">A side</option>
+        <option value="b">B side</option>
+      </select>
+      <select id="tokDuration" style="background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;">
+        <option value="3600">1 hour</option>
+        <option value="21600">6 hours</option>
+        <option value="86400">1 day</option>
+        <option value="604800">7 days</option>
+        <option value="2592000">30 days</option>
+        <option value="31536000">1 year</option>
+      </select>
+      <input type="text" id="tokNote" placeholder="Note (optional)" style="flex:1;min-width:160px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;">
+      <button class="btn primary" onclick="generateToken()">Generate Token</button>
+    </div>
+    <div id="genResult" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:8px;background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.35);color:var(--green);font-size:13px;"></div>
+    <div class="search-bar" style="border:1px solid var(--border);border-radius:8px;margin-bottom:12px;padding:8px 12px;">
+      <input type="text" id="tokenSearch" placeholder="Search Token, note, IP…" oninput="filterTokens()" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:13px;outline:none;flex:1;">
+      <span class="count" id="tokenCount"></span>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Token</th><th>Role</th><th>Validity</th><th>Status</th><th>Activated</th><th>Last IP</th><th>Last used</th><th>Note</th><th>Actions</th></tr></thead>
+      <tbody id="tokenBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+    </table>
+    </div>
+    <div class="collapse-bar" id="tokenCollapse" style="display:none" onclick="toggleCollapse('token')">Show all</div>
+  </div>
+</div>
+
+<!-- Auto Keybox -->
+<div class="panel">
+  <h2>Auto Keybox <span class="hint">Periodically pull a keybox from upstream and store it under the specified device ID</span></h2>
+  <div class="body">
+    <div class="token-gen" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+      <div class="switch" style="margin:0;">
+        <span>Auto refresh</span>
+        <input type="checkbox" id="akbSwitch" onchange="toggleAutoKeybox(this.checked)">
+        <label for="akbSwitch" class="track"></label>
+      </div>
+      <span class="hint" id="akbStatus" style="flex:1;">Loading…</span>
+      <button class="btn primary" onclick="refreshAutoKeybox()">Refresh now</button>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Source</th><th>Target device ID</th><th>Primary URL</th><th>Mirror URL</th><th>HEX decode</th></tr></thead>
+      <tbody id="akbBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- A/B IP allow/deny list -->
+<div class="panel">
+  <h2>A/B-side IP allow/deny list <span class="hint">Applies only to A/B-side APIs; admin is unaffected</span></h2>
+  <div class="body">
+    <div class="token-gen" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+      <div class="switch" style="margin:0;">
+        <span>Enable filtering</span>
+        <input type="checkbox" id="ipfSwitch" onchange="toggleIpFilter(this.checked)">
+        <label for="ipfSwitch" class="track"></label>
+      </div>
+      <select id="ipfMode" onchange="setIpFilterMode(this.value)" style="background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;">
+        <option value="black">Deny list (block IPs in the list)</option>
+        <option value="white">Allow list (only IPs in the list)</option>
+      </select>
+      <input type="text" id="ipfIp" placeholder="Enter an IP (e.g. 1.2.3.4)" style="flex:1;min-width:140px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;">
+      <button class="btn primary" onclick="addIpFilter()">Add</button>
+    </div>
+    <div id="ipfList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+</div>
+
+<!-- StrongBox robustness mode -->
+<div class="panel">
+  <h2>StrongBox resilient mode <span class="hint">When the B side lacks StrongBox capability, automatically downgrade to B-side TEE issuance (Android's standard silent-downgrade behavior)</span></h2>
+  <div class="body">
+    <div class="token-gen" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+      <div class="switch" style="margin:0;">
+        <span>Enable resilient mode</span>
+        <input type="checkbox" id="sbrSwitch" onchange="toggleStrongbox(this.checked)">
+        <label for="sbrSwitch" class="track"></label>
+      </div>
+      <span class="hint" id="sbrStatus" style="flex:1;">Loading…</span>
+    </div>
+    <p class="hint" style="margin:0;line-height:1.6;">When enabled: if a B-side device reports StrongBox unsupported / no pre-provisioned key, the server automatically downgrades the request to TEE level and resends it to the B side, and returns an explicit downgrade marker to compatible A sides; the certificate chain and KeyCharacteristics both honestly report TRUSTED_ENVIRONMENT (never impersonating StrongBox). When disabled, strict native semantics are kept and StrongBox failures follow the server three-tier fallback.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-mask" id="modalMask" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="modalTitle">Title</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let session = localStorage.getItem('relaySession') || '';
+let sessionUser = localStorage.getItem('relaySessionUser') || '';
+
+function openModal(title, bodyHtml) {
+  $('#modalTitle').textContent = title;
+  $('#modalBody').innerHTML = bodyHtml;
+  $('#modalMask').classList.add('show');
+}
+function setModalBody(html) { $('#modalBody').innerHTML = html; }
+function closeModal() { $('#modalMask').classList.remove('show'); }
+
+const headers = () => ({ 'X-Relay-Session': session, 'Content-Type': 'application/json' });
+const api = async (path, opts = {}) => {
+  const r = await fetch(path, { ...opts, headers: { ...headers(), ...(opts.headers||{}) } });
+  if (r.status === 401) {
+    // Session invalid/expired -> back to login.
+    localStorage.removeItem('relaySession');
+    location.href = '/login/';
+    throw new Error('unauthorized');
+  }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
+};
+
+async function logout() {
+  try { await api('/api/admin/logout/', { method: 'POST' }); } catch (e) {}
+  localStorage.removeItem('relaySession');
+  localStorage.removeItem('relaySessionUser');
+  location.href = '/login/';
+}
+
+function toast(msg, type = 'ok') {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function fmtTime(ms) {
+  if (!ms) return '—';
+  const d = new Date(Number(ms));
+  return d.toLocaleString('zh-CN', { hour12: false });
+}
+function fmtTimeStr(s) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toLocaleString('zh-CN', { hour12: false });
+}
+const STATUS_ZH = { pending: 'Pending', assigned: 'Assigned', completed: 'Completed', failed: 'Failed' };
+function statusTag(st) {
+  const map = { pending: 'warn', assigned: 'warn', completed: 'on', failed: 'off' };
+  const label = STATUS_ZH[st] || st;
+  return `<span class="tag ${map[st]||''}">${label}</span>`;
+}
+
+async function loadOverview() {
+  try {
+    const d = await api('/api/admin/overview/');
+    $('#serverBadge').textContent = d.status === 'ok' ? '● Online' : '● Error';
+    $('#serverBadge').className = 'badge ok';
+    $('#statMode').textContent = d.mode === 'server_keybox' ? 'Local issuing' : 'A/B forwarding';
+    $('#statModeSub').textContent = d.server_keybox_enabled ? 'server_keybox enabled' : 'physical (A/B side forwards real TEE)';
+    $('#statIdents').textContent = d.stored_identities ?? 0;
+    $('#statActiveIdent').textContent = d.active_identity
+      ? `Active: ${d.active_identity.device_id} (${d.active_identity.algorithm}, ${d.active_identity.cert_count} certs)`
+      : 'No active identity';
+    $('#statBDev').textContent = d.connected_b_devices ?? 0;
+    $('#statPending').textContent = d.counts?.pending ?? 0;
+    $('#statDone').textContent = d.counts?.completed ?? 0;
+    $('#statFail').textContent = d.counts?.failed ?? 0;
+    // sync mode switch
+    const sw = $('#modeSwitch');
+    const want = !!d.server_keybox_enabled;
+    if (sw.checked !== want) sw.checked = want;
+    updateModeLabel(want);
+  } catch (e) { /* auth handled */ }
+}
+
+function updateModeLabel(on) {
+  $('#modeLabel').textContent = on ? 'serverbox mode (server-local issuing)' : 'physical mode (A/B-side forwarding)';
+}
+
+$('#modeSwitch').addEventListener('change', async (e) => {
+  try {
+    const d = await api('/api/admin/mode/', { method: 'POST', body: JSON.stringify({ enabled: e.target.checked }) });
+    updateModeLabel(d.server_keybox_enabled);
+    toast(`Switched to ${d.mode === 'server_keybox' ? 'local issuing mode' : 'A/B forwarding mode'}`);
+    loadAll();
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    toast('Switch failed: ' + err.message, 'err');
+  }
+});
+
+// ---- Device identity data cache + search ----
+let _identData = [];
+let _bdevData = [];
+
+async function loadDevices() {
+  try {
+    const d = await api('/api/admin/devices/');
+    _identData = d.identities || [];
+    _bdevData = d.connected_b_devices || [];
+    $('#identHint').textContent = `${_identData.length} stored cert device(s)`;
+    renderIdents();
+    renderBdevs();
+  } catch (e) {}
+}
+
+function filterIdents() {
+  renderIdents();
+}
+
+function renderIdents() {
+  const q = (document.getElementById('identSearch').value || '').trim().toLowerCase();
+  const filtered = !q ? _identData : _identData.filter(x =>
+    x.device_id && x.device_id.toLowerCase().includes(q)
+  );
+  document.getElementById('identCount').textContent = q
+    ? `${filtered.length} / ${_identData.length}`
+    : `${_identData.length}`;
+  if (!filtered.length) {
+    $('#identBody').innerHTML = '<tr><td colspan="5" class="empty">' + (q ? 'No matching devices' : 'No device certificates yet; please upload keybox.xml first') + '</td></tr>';
+    $('#identCollapse').style.display = 'none';
+    return;
+  }
+  const html = renderCollapsible(filtered, 'ident', x => {
+    const algos = (x.algorithms || []).map(a =>
+      `<span class="tag ${a}">${String(a).toUpperCase()}</span>`).join(' ');
+    return `<tr>
+      <td class="mono">${esc(x.device_id)}</td>
+      <td>${algos}</td>
+      <td>${x.cert_count}</td>
+      <td>${x.active ? '<span class="tag on">Active</span>' : '<span class="tag off">Disabled</span>'}</td>
+      <td>
+        ${x.active
+          ? `<button class="btn small" onclick="setActive('${esc(x.device_id)}', false)">Disable</button>`
+          : `<button class="btn small" onclick="setActive('${esc(x.device_id)}', true)">Enable</button>`}
+        <button class="btn small danger" onclick="delIdent('${esc(x.device_id)}')">Delete</button>
+      </td>
+    </tr>`;
+  });
+  $('#identBody').innerHTML = html;
+}
+
+function renderBdevs() {
+  if (!_bdevData.length) {
+    $('#bdevBody').innerHTML = '<tr><td colspan="4" class="empty">No B-side devices online</td></tr>';
+    $('#bdevCollapse').style.display = 'none';
+    return;
+  }
+  const html = renderCollapsible(_bdevData, 'bdev', x => `
+    <tr>
+      <td class="mono">${esc(x.device_id)}</td>
+      <td class="mono">${esc(x.machine_id || '—')}</td>
+      <td><span class="tag ${x.load > 0 ? 'warn' : 'on'}">${x.load ?? 0}</span></td>
+      <td>${fmtTime(x.last_seen_ms)}</td>
+    </tr>`);
+  $('#bdevBody').innerHTML = html;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function setActive(deviceId, active) {
+  try {
+    await api(`/api/admin/devices/${encodeURIComponent(deviceId)}/active/`, {
+      method: 'POST', body: JSON.stringify({ active })
+    });
+    toast(`${active ? 'Enabled' : 'Disabled'} ${deviceId}`);
+    loadDevices(); loadOverview();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function delIdent(deviceId) {
+  if (!confirm(`Delete device identity ${deviceId}?`)) return;
+  try {
+    await api(`/api/admin/devices/${encodeURIComponent(deviceId)}/`, { method: 'DELETE' });
+    toast('Deleted ' + deviceId);
+    loadDevices(); loadOverview();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---- Report data cache + search ----
+let _reportData = [];
+
+async function loadReports() {
+  try {
+    const d = await api('/api/admin/reports/');
+    _reportData = d.reports || [];
+    renderReports();
+  } catch (e) {}
+}
+
+function filterReports() {
+  renderReports();
+}
+
+function renderReports() {
+  const q = (document.getElementById('reportSearch').value || '').trim().toLowerCase();
+  const filtered = !q ? _reportData : _reportData.filter(r =>
+    (r.device_id && r.device_id.toLowerCase().includes(q)) ||
+    (r.message && r.message.toLowerCase().includes(q))
+  );
+  document.getElementById('reportCount').textContent = q
+    ? `${filtered.length} / ${_reportData.length}`
+    : `${_reportData.length}`;
+  if (!filtered.length) {
+    $('#reportBody').innerHTML = '<tr><td colspan="4" class="empty">' + (q ? 'No matching reports' : 'No reports') + '</td></tr>';
+    $('#reportCollapse').style.display = 'none';
+    return;
+  }
+  const html = renderCollapsible(filtered, 'report', r => `
+    <tr>
+      <td class="mono">${esc(r.device_id || '—')}</td>
+      <td><span class="tag ${r.level === 'error' ? 'off' : r.level === 'warn' ? 'warn' : 'on'}">${esc(r.level)}</span></td>
+      <td>${esc(r.message)}</td>
+      <td>${fmtTimeStr(r.created_at)}</td>
+    </tr>`);
+  $('#reportBody').innerHTML = html;
+}
+
+function fmtDuration(sec) {
+  sec = Number(sec) || 0;
+  if (sec >= 86400) return (sec / 86400) + ' days';
+  if (sec >= 3600) return (sec / 3600) + ' hours';
+  if (sec >= 60) return (sec / 60) + ' minutes';
+  return sec + ' seconds';
+}
+
+async function generateToken() {
+  const role = $('#tokRole').value;
+  const duration = parseInt($('#tokDuration').value, 10);
+  const note = $('#tokNote').value.trim();
+  try {
+    const d = await api('/api/admin/tokens/', {
+      method: 'POST',
+      body: JSON.stringify({ role, duration_seconds: duration, note })
+    });
+    const r = $('#genResult');
+    r.style.display = 'block';
+    r.innerHTML = `Generated ${d.role === 'a' ? 'A-side' : 'B-side'} Token (valid for ${fmtDuration(d.duration_seconds)}):<br><b class="mono">${esc(d.token)}</b>`;
+    $('#tokNote').value = '';
+    toast('Token generated');
+    loadTokens();
+  } catch (e) { toast('Generation failed: ' + e.message, 'err'); }
+}
+
+async function toggleToken(id, enabled) {
+  try {
+    await api(`/api/admin/tokens/${id}/`, { method: 'POST', body: JSON.stringify({ enabled }) });
+    toast(`${enabled ? 'Enabled' : 'Disabled'} Token`);
+    loadTokens();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteToken(id) {
+  if (!confirm('Delete this Token? It will be invalidated immediately.')) return;
+  try {
+    await api(`/api/admin/tokens/${id}/`, { method: 'DELETE' });
+    toast('Token deleted');
+    loadTokens();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function viewTokenIps(tokenEncoded) {
+  const token = decodeURIComponent(tokenEncoded);
+  openModal('IP usage history', 'Loading…');
+  try {
+    const d = await api(`/api/admin/tokens/${encodeURIComponent(token)}/ips/`);
+    const ips = d.ips || [];
+    if (!ips.length) {
+      setModalBody('<div class="empty">This Token has no usage records yet</div>');
+      return;
+    }
+    const rows = ips.map(x => {
+      const loc = formatRegion(x.region) || 'Unknown region';
+      return `<tr>
+        <td class="mono">${esc(x.ip)}</td>
+        <td>${esc(loc)}</td>
+        <td>${x.count ?? 0}</td>
+        <td>${fmtTimeStr(x.first_used_at)}</td>
+        <td>${fmtTimeStr(x.last_used_at)}</td>
+      </tr>`;
+    }).join('');
+    setModalBody(`<table>
+      <thead><tr><th>IP address</th><th>Region</th><th>Usage count</th><th>First used</th><th>Last used</th></tr></thead>
+      <tbody>${rows}</tbody></table>`);
+  } catch (e) {
+    setModalBody(`<div class="empty">Load failed: ${esc(e.message)}</div>`);
+  }
+}
+
+// Normalize ip2region's `country|region|province|city|ISP` string into readable text.
+function formatRegion(region) {
+  if (!region) return '';
+  const parts = region.split('|').map(s => s.trim()).filter(s => s && s !== '0');
+  return parts.join(' ');
+}
+
+// ---- Collapsible table ----
+const COLLAPSE_LIMIT = 8;
+const _collapseState = {}; // { 'task': false, 'token': false, ... }
+
+function toggleCollapse(key) {
+  _collapseState[key] = !_collapseState[key];
+  if (key === 'task') renderTasks();
+  else if (key === 'token') renderTokens();
+  else if (key === 'ident') renderIdents();
+  else if (key === 'bdev') renderBdevs();
+  else if (key === 'report') renderReports();
+}
+
+function renderCollapsible(rows, key, renderRow) {
+  const total = rows.length;
+  const expanded = _collapseState[key] || false;
+  const limit = expanded ? total : Math.min(COLLAPSE_LIMIT, total);
+  const html = rows.slice(0, limit).map(renderRow).join('');
+  const bar = document.getElementById(key + 'Collapse');
+  if (total > COLLAPSE_LIMIT) {
+    bar.style.display = 'block';
+    bar.textContent = expanded
+      ? `Collapse, show only ${COLLAPSE_LIMIT}`
+      : `Show all ${total}`;
+  } else {
+    bar.style.display = 'none';
+  }
+  return html;
+}
+
+// ---- Task data cache + search ----
+let _taskData = [];
+
+function filterTasks() {
+  renderTasks();
+}
+
+function renderTasks() {
+  const q = (document.getElementById('taskSearch').value || '').trim().toLowerCase();
+  const filtered = !q ? _taskData : _taskData.filter(t =>
+    (t.task_id && t.task_id.toLowerCase().includes(q)) ||
+    (t.task_type && t.task_type.toLowerCase().includes(q)) ||
+    (t.target_device_id && t.target_device_id.toLowerCase().includes(q))
+  );
+  document.getElementById('taskCount').textContent = q
+    ? `${filtered.length} / ${_taskData.length}`
+    : `${_taskData.length}`;
+  if (!filtered.length) {
+    document.getElementById('taskBody').innerHTML = '<tr><td colspan="5" class="empty">' + (q ? 'No matching tasks' : 'No tasks') + '</td></tr>';
+    document.getElementById('taskCollapse').style.display = 'none';
+    return;
+  }
+  const html = renderCollapsible(filtered, 'task', t => `
+    <tr>
+      <td class="mono">${esc(t.task_id)}</td>
+      <td class="mono">${esc(t.task_type)}</td>
+      <td class="mono">${esc(t.target_device_id || '—')}</td>
+      <td>${statusTag(t.status)}</td>
+      <td>${fmtTime(t.created_at_ms)}</td>
+    </tr>`);
+  document.getElementById('taskBody').innerHTML = html;
+}
+
+async function loadTasks() {
+  try {
+    const d = await api('/api/admin/tasks/');
+    _taskData = d.tasks || [];
+    renderTasks();
+  } catch (e) {}
+}
+
+// ---- Token data cache + search ----
+let _tokenData = [];
+
+async function loadTokens() {
+  try {
+    const d = await api('/api/admin/tokens/');
+    _tokenData = d.tokens || [];
+    renderTokens();
+  } catch (e) {}
+}
+
+function filterTokens() {
+  renderTokens();
+}
+
+function renderTokens() {
+  const q = (document.getElementById('tokenSearch').value || '').trim().toLowerCase();
+  const filtered = !q ? _tokenData : _tokenData.filter(t =>
+    (t.token && t.token.toLowerCase().includes(q)) ||
+    (t.note && t.note.toLowerCase().includes(q)) ||
+    (t.last_ip && t.last_ip.toLowerCase().includes(q)) ||
+    (t.role && t.role.toLowerCase().includes(q))
+  );
+  document.getElementById('tokenCount').textContent = q
+    ? `${filtered.length} / ${_tokenData.length}`
+    : `${_tokenData.length}`;
+  if (!filtered.length) {
+    document.getElementById('tokenBody').innerHTML = '<tr><td colspan="9" class="empty">' + (q ? 'No matching Tokens' : 'No API Tokens') + '</td></tr>';
+    document.getElementById('tokenCollapse').style.display = 'none';
+    return;
+  }
+  const html = renderCollapsible(filtered, 'token', t => `
+    <tr>
+      <td class="mono">${esc(t.token)}</td>
+      <td><span class="tag ${t.role === 'a' ? 'ec' : 'rsa'}">${t.role === 'a' ? 'A side' : 'B side'}</span></td>
+      <td>${fmtDuration(t.duration_seconds)}</td>
+      <td>${t.enabled ? '<span class="tag on">Enabled</span>' : '<span class="tag off">Disabled</span>'}</td>
+      <td class="mono">${t.activated_at ? fmtTimeStr(t.activated_at) : 'Not activated'}</td>
+      <td class="mono">${esc(t.last_ip || '—')}</td>
+      <td>${t.last_used_at ? fmtTimeStr(t.last_used_at) : '—'}</td>
+      <td>${esc(t.note || '—')}</td>
+      <td>
+        <button class="btn small" onclick="viewTokenIps('${encodeURIComponent(t.token)}')">View IPs</button>
+        ${t.enabled
+          ? `<button class="btn small" onclick="toggleToken(${t.id}, false)">Disable</button>`
+          : `<button class="btn small" onclick="toggleToken(${t.id}, true)">Enable</button>`}
+        <button class="btn small danger" onclick="deleteToken(${t.id})">Delete</button>
+      </td>
+    </tr>`);
+  document.getElementById('tokenBody').innerHTML = html;
+}
+
+async function loadAutoKeybox() {
+  try {
+    const d = await api('/api/admin/autokeybox/');
+    $('#akbSwitch').checked = !!d.enabled;
+    $('#akbStatus').textContent = d.enabled
+      ? `Enabled · refreshes every ${Math.round((d.interval_secs || 7200) / 3600)} hour(s)`
+      : 'Disabled';
+    const srcs = d.sources || [];
+    $('#akbBody').innerHTML = srcs.length
+      ? srcs.map(s => `<tr>
+          <td><b>${esc(s.name)}</b></td>
+          <td class="mono">${esc(s.device_id)} <button class="btn small" style="padding:1px 6px;line-height:1.4;" onclick="editAkbDevice('${esc(s.name)}','${esc(s.device_id)}')" title="Edit target device ID">Edit</button></td>
+          <td class="mono" title="${esc(s.url_primary)}">${esc(s.url_primary)}</td>
+          <td class="mono" title="${esc(s.url_mirror)}">${esc(s.url_mirror || '—')}</td>
+          <td>${s.decode_hex ? 'Yes' : 'No'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="5" class="empty">No sources configured</td></tr>';
+  } catch (e) {}
+}
+
+async function toggleAutoKeybox(on) {
+  try {
+    await api('/api/admin/autokeybox/', { method: 'POST', body: JSON.stringify({ enabled: on }) });
+    toast(on ? 'Auto Keybox enabled' : 'Auto Keybox disabled');
+    loadAutoKeybox();
+  } catch (e) { toast(e.message, 'err'); loadAutoKeybox(); }
+}
+
+async function refreshAutoKeybox() {
+  try {
+    await api('/api/admin/autokeybox/refresh/', { method: 'POST' });
+    toast('Immediate refresh triggered (runs in background)');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function editAkbDevice(name, cur) {
+  const v = prompt(`Edit target device ID for "${name}"\nCurrent: ${cur}`, cur);
+  if (v === null) return;
+  if (!v.trim()) return toast('Device ID cannot be empty', 'err');
+  try {
+    await api('/api/admin/autokeybox/device/', { method: 'POST', body: JSON.stringify({ name, device_id: v.trim() }) });
+    toast(`Updated ${name} → ${v.trim()}`);
+    loadAutoKeybox();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadIpFilter() {
+  try {
+    const d = await api('/api/admin/ipfilter/');
+    $('#ipfSwitch').checked = !!d.enabled;
+    $('#ipfMode').value = d.whitelist ? 'white' : 'black';
+    renderIpList(d.ips || []);
+  } catch (e) {}
+}
+
+function renderIpList(ips) {
+  const c = $('#ipfList');
+  c.innerHTML = ips.length
+    ? ips.map(ip => `<span class="tag" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;">
+        <span class="mono">${esc(ip)}</span>
+        <button onclick="removeIpFilter('${esc(ip)}')" style="background:none;border:none;color:var(--off);cursor:pointer;font-size:14px;line-height:1;">×</button>
+      </span>`).join('')
+    : '<span class="hint">No IPs</span>';
+}
+
+async function toggleIpFilter(on) {
+  const whitelist = $('#ipfMode').value === 'white';
+  try {
+    await api('/api/admin/ipfilter/config/', { method: 'POST', body: JSON.stringify({ enabled: on, whitelist }) });
+    toast(on ? 'IP filtering enabled' : 'IP filtering disabled');
+  } catch (e) { toast(e.message, 'err'); }
+  loadIpFilter();
+}
+
+async function setIpFilterMode(mode) {
+  const enabled = $('#ipfSwitch').checked;
+  try {
+    await api('/api/admin/ipfilter/config/', { method: 'POST', body: JSON.stringify({ enabled, whitelist: mode === 'white' }) });
+    toast(mode === 'white' ? 'Switched to allow-list mode' : 'Switched to deny-list mode');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function addIpFilter() {
+  const ip = $('#ipfIp').value.trim();
+  if (!ip) { toast('Please enter an IP', 'err'); return; }
+  try {
+    await api('/api/admin/ipfilter/add/', { method: 'POST', body: JSON.stringify({ ip }) });
+    $('#ipfIp').value = '';
+    toast(`Added ${ip}`);
+    loadIpFilter();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function removeIpFilter(ip) {
+  try {
+    await api('/api/admin/ipfilter/remove/', { method: 'POST', body: JSON.stringify({ ip }) });
+    toast(`Removed ${ip}`);
+    loadIpFilter();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadStrongbox() {
+  try {
+    const d = await api('/api/admin/strongbox/');
+    $('#sbrSwitch').checked = !!d.enabled;
+    $('#sbrStatus').textContent = d.enabled
+      ? 'Enabled: when B-side StrongBox is unavailable/not provisioned, automatically issue with B-side TEE and honestly mark the downgrade'
+      : 'Disabled: B-side StrongBox failures fall back per native semantics (server three-tier fallback)';
+  } catch (e) {}
+}
+
+async function toggleStrongbox(on) {
+  try {
+    await api('/api/admin/strongbox/', { method: 'POST', body: JSON.stringify({ enabled: on }) });
+    toast(on ? 'StrongBox resilient mode enabled' : 'StrongBox resilient mode disabled');
+    loadStrongbox();
+  } catch (e) { toast(e.message, 'err'); loadStrongbox(); }
+}
+
+function loadAll() {
+  loadOverview(); loadDevices(); loadTasks(); loadReports(); loadTokens(); loadAutoKeybox(); loadIpFilter(); loadStrongbox();
+}
+
+/* Upload */
+const dz = $('#dropzone'), fi = $('#fileInput');
+dz.addEventListener('click', () => fi.click());
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+});
+fi.addEventListener('change', () => { if (fi.files.length) uploadFile(fi.files[0]); fi.value = ''; });
+
+async function uploadFile(file) {
+  const st = $('#uploadStatus');
+  st.className = 'upload-status';
+  st.textContent = `Uploading ${file.name}…`;
+  st.style.display = 'block';
+  try {
+    const text = await file.text();
+    const r = await fetch('/api/admin/keybox/', {
+      method: 'POST',
+      headers: { 'X-Relay-Session': session, 'Content-Type': 'application/xml' },
+      body: text,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    st.className = 'upload-status ok';
+    const imported = (data.imported || []).map(k =>
+      `${String(k.algorithm).toUpperCase()} (${k.cert_count} certs)`).join(', ');
+    st.innerHTML = `✅ ${data.message}<br>
+      Device: <b>${esc(data.device_id)}</b> · Imported: <b>${imported || '—'}</b>`;
+    loadAll();
+  } catch (e) {
+    st.className = 'upload-status err';
+    st.textContent = 'Upload failed: ' + e.message;
+  }
+}
+
+// Init: verify session before loading; redirect to login if invalid.
+(async function init() {
+  if (!session) {
+    location.href = '/login/';
+    return;
+  }
+  try {
+    const r = await fetch('/api/admin/session/', { headers: { 'X-Relay-Session': session } });
+    const d = await r.json();
+    if (!d.valid) {
+      location.href = '/login/';
+      return;
+    }
+  } catch (e) {
+    location.href = '/login/';
+    return;
+  }
+  // Show session info.
+  $('#sessionBar').style.display = 'block';
+  $('#sessionUser').textContent = sessionUser || 'admin';
+  $('#userBadge').textContent = sessionUser || 'admin';
+  $('#logoutBtn').style.display = '';
+  loadAll();
+  setInterval(loadOverview, 10000);
+  setInterval(loadDevices, 15000);
+  setInterval(loadTasks, 10000);
+  setInterval(loadReports, 10000);
+  setInterval(loadTokens, 15000);
+  setInterval(loadAutoKeybox, 30000);
+})();
+</script>
+</body>
+</html>

@@ -9,18 +9,18 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 CARGOS = (
-    "a-side/source/Cargo.toml",
-    "a-side/source/ommega-injector/Cargo.toml",
-    "b-side/source/Cargo.toml",
-    "server/source/Cargo.toml",
+    "a-side/Cargo.toml",
+    "a-side/ommega-injector/Cargo.toml",
+    "b-side/Cargo.toml",
+    "server/Cargo.toml",
 )
 LOCKS = {
-    "a-side/source/Cargo.lock": ("ommega", "ommega-injector"),
-    "b-side/source/Cargo.lock": ("ommegaclient-b",),
-    "server/source/Cargo.lock": ("relay_rs",),
+    "a-side/Cargo.lock": ("ommega", "ommega-injector"),
+    "b-side/Cargo.lock": ("ommegaclient-b",),
+    "server/Cargo.lock": ("relay_rs",),
 }
 APPS = {
-    "b-app/source/app/build.gradle.kts": "-ommega",
+    "b-app/app/build.gradle.kts": "-ommega",
     "StrongBoxCapabilityMask/app/build.gradle.kts": "",
 }
 

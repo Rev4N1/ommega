@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Ommega B</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)); background: #111318; color: #e4e2e9; }
+    main { max-width: 720px; margin: auto; }
+    header { margin: 8px 0 22px; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    h2, summary { margin: 0; font-size: 19px; font-weight: 650; }
+    h3 { margin: 0; font-size: 16px; }
+    p { line-height: 1.55; }
+    .sub, .note { color: #cac4d0; }
+    .sub { margin: 0; }
+    .card { background: #1d1f25; border: 1px solid #30313b; border-radius: 20px; padding: 20px; margin: 14px 0; }
+    .note { margin: 8px 0 0; font-size: 13px; }
+    .field { display: block; margin: 18px 0; font-size: 14px; font-weight: 600; }
+    input:not([type=checkbox]), select { display: block; width: 100%; min-width: 0; margin-top: 8px; padding: 13px; border: 1px solid #797781; border-radius: 12px; background: #111318; color: inherit; font: inherit; font-size: 16px; }
+    input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid #d0bcff; outline-offset: 3px; }
+    input[type=checkbox] { width: 21px; height: 21px; accent-color: #d0bcff; }
+    .row, .actions, .section-heading { display: flex; align-items: center; gap: 10px; }
+    .row input { flex: 1; }
+    .row button { margin-top: 8px; flex-shrink: 0; }
+    .section-heading { justify-content: space-between; }
+    .actions { flex-wrap: wrap; margin-top: 18px; }
+    button { border: 0; border-radius: 14px; padding: 12px 18px; background: #d0bcff; color: #381e72; font-weight: 700; font-size: 14px; cursor: pointer; }
+    button.secondary { background: #34323b; color: #e7e0ec; }
+    button:disabled { opacity: .5; cursor: default; }
+    .logging { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .log-sink { border: 1px solid #393842; border-radius: 14px; padding: 14px; }
+    .toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 600; font-size: 14px; }
+    .log-sink .field { margin-bottom: 0; }
+    .message { min-height: 22px; margin-top: 12px; font-size: 14px; color: #b9e6c3; overflow-wrap: anywhere; }
+    .error { color: #ffb4ab; }
+    .badge { display: inline-block; margin-top: 12px; padding: 5px 10px; border-radius: 20px; background: #34323b; color: #d8d2e0; font-size: 12px; }
+    summary { cursor: pointer; }
+    #status { white-space: pre-wrap; overflow-wrap: anywhere; color: #c7c4ce; font-family: ui-monospace, monospace; font-size: 12px; margin: 16px 0 0; }
+    fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+    @media (max-width: 400px) { .logging { grid-template-columns: 1fr; } .card { padding: 16px; } body { padding-left: 12px; padding-right: 12px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ommega B</h1>
+    <p class="sub">Remote connection and device configuration</p>
+    <span id="relay-status" class="badge">Reading relay status…</span>
+  </header>
+  <section class="card" aria-labelledby="relay-title">
+    <div class="section-heading"><h2 id="relay-title">Relay configuration</h2><button id="relay-reload" class="secondary" type="button">Reload</button></div>
+    <p class="note">Connection parameters are loaded automatically after saving; in-progress tasks keep their original connection.</p>
+    <form id="relay-form" novalidate autocomplete="off">
+      <fieldset id="relay-fields" disabled>
+        <label class="field" for="relay-server">Server address<input id="relay-server" type="url" inputmode="url" placeholder="https://relay.example.com:8443" spellcheck="false" autocapitalize="none" required></label>
+        <label class="field" for="relay-device">Device ID<input id="relay-device" placeholder="Must match the device ID registered with the Server" spellcheck="false" autocapitalize="none" required></label>
+        <label class="field" for="relay-token">Token</label>
+        <div class="row"><input id="relay-token" type="password" aria-label="Token" placeholder="B-side connection credential" autocomplete="new-password" spellcheck="false" autocapitalize="none" required><button id="token-toggle" type="button" class="secondary" aria-pressed="false">Show</button></div>
+        <label class="field" for="relay-machine">Machine ID <span class="note">· optional</span><input id="relay-machine" placeholder="Leave empty if unassigned" spellcheck="false" autocapitalize="none"></label>
+        <h3>Logs</h3>
+        <p class="note">Log toggles and levels take effect the next time relay starts.</p>
+        <div class="logging">
+          <div class="log-sink">
+            <label class="toggle" for="file-log-enabled">File log<input id="file-log-enabled" type="checkbox"></label>
+            <label class="field" for="file-log-level">Log level<select id="file-log-level"></select></label>
+          </div>
+          <div class="log-sink">
+            <label class="toggle" for="logcat-enabled">System log (logcat)<input id="logcat-enabled" type="checkbox"></label>
+            <label class="field" for="logcat-level">Log level<select id="logcat-level"></select></label>
+          </div>
+        </div>
+        <div class="actions"><button id="relay-save" type="submit">Save relay configuration</button></div>
+      </fieldset>
+    </form>
+    <div id="relay-message" class="message" role="status" aria-live="polite">Reading configuration…</div>
+  </section>
+  <details class="card" id="spl-section">
+    <summary>Security Patch Level (SPL)</summary>
+    <p class="note">Saved and applied separately. Changing the SPL may reload KeyMint and keystore2; leave empty to use the first recorded baseline. Already-upgraded keys may still require a higher SPL.</p>
+    <label class="field">System SPL<input id="system" placeholder="YYYY-MM-DD"></label>
+    <label class="field">Boot SPL<input id="boot" placeholder="YYYY-MM-DD"></label>
+    <label class="field">Vendor SPL<input id="vendor" placeholder="YYYY-MM-DD"></label>
+    <div class="actions">
+      <button id="save" disabled>Save and apply SPL</button>
+      <button id="same" class="secondary">Use System value for all three</button>
+      <button id="auto" class="secondary">Clear all three fields</button>
+    </div>
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+    <p class="note">Whether the Boot SPL is accepted by hardware is determined by newly generated attestation certificates.</p>
+    <div id="status">Reading…</div>
+  </details>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

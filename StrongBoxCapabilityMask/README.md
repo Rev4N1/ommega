@@ -1,6 +1,6 @@
 # StrongBox Capability Mask
 
-[中文项目说明](../README.md) · [English project documentation](../README.en.md)
+[Project documentation](../README.md)
 
 For the tested firmware matrix, suitability, global effects and risk disclaimer,
 read the StrongBoxCapabilityMask section in the project documentation above.
