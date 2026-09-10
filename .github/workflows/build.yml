@@ -33,7 +33,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Resolve and check product version
         id: version
         env:
@@ -60,7 +60,7 @@ jobs:
       matrix:
         component: [a, b]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set build version
@@ -143,7 +143,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             artifact: relay_rs-windows-x86_64-msvc.exe
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set build version
         shell: bash
         env:
@@ -196,12 +196,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set build version
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 .github/scripts/bump_version.py --version "$RELEASE_VERSION"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
